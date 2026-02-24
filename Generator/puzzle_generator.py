@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.spatial import Voronoi
+import argparse
 
 
 # ---------------------------------------------------------------------------
@@ -588,15 +589,15 @@ def preview_grid(pieces, save_path='preview_grid.png'):
 # ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    IMAGE = './tard-58b8d17f3df78c353c22729d.jpg'
+    # IMAGE = './tard-58b8d17f3df78c353c22729d.jpg'
 
-    # --- Classic curved jigsaw ---
-    pieces = create_jigsaw(IMAGE, num_pieces=20, shape_type='curved',
-                           output_dir='puzzle_curved', seed=7)
-    preview_assembled(pieces, save_path='preview_curved_assembled.png')
-    preview_grid(pieces,      save_path='preview_curved_grid.png')
+    # # --- Classic curved jigsaw ---
+    # pieces = create_jigsaw(IMAGE, num_pieces=20, shape_type='curved',
+    #                        output_dir='puzzle_curved', seed=7)
+    # preview_assembled(pieces, save_path='preview_curved_assembled.png')
+    # preview_grid(pieces,      save_path='preview_curved_grid.png')
 
-    # --- Shattered glass / Voronoi polygons ---
+    # # --- Shattered glass / Voronoi polygons ---
     # img_tmp  = Image.open(IMAGE)
     # img_w, img_h = img_tmp.width, img_tmp.height
 
@@ -605,3 +606,46 @@ if __name__ == '__main__':
     # preview_assembled_shattered(shards, img_w, img_h,
     #                              save_path='preview_shattered_assembled.png')
     # preview_grid_shattered(shards, save_path='preview_shattered_grid.png')
+
+    parser = argparse.ArgumentParser(description="Image Puzzle Generator: Create jigsaw or shattered pieces.")
+    
+    # Required arguments
+    parser.add_argument("image", help="Path to the source image file")
+    
+    # Optional parameters
+    parser.add_argument("-n", "--num_pieces", type=int, default=20, 
+                        help="Approximate number of pieces to generate (default: 20)")
+    parser.add_argument("-s", "--style", choices=['curved', 'shattered', 'regular'], default='curved',
+                        help="Puzzle style: 'curved' (jigsaw), 'shattered' (Voronoi), or 'regular' (rectangles)")
+    parser.add_argument("--seed", type=int, default=42, 
+                        help="Random seed for deterministic piece shapes")
+    parser.add_argument("--no-preview", action="store_true", 
+                        help="Disable generation of assembly and grid preview images")
+
+    args = parser.parse_args()
+
+    # Load image to get dimensions
+    if not os.path.exists(args.image):
+        print(f"Error: File {args.image} not found.")
+        exit(1)
+
+    img_tmp = Image.open(args.image)
+    w, h = img_tmp.size
+    output_dir_name = f"./{args.style}_{args.num_pieces}"
+
+    print(f"Processing '{args.image}' ({w}x{h}) into {args.num_pieces} {args.style} pieces...")
+
+    if args.style == 'shattered':
+        pieces = create_shattered(args.image, args.num_pieces, output_dir=output_dir_name + '/pieces', seed=args.seed)
+        if not args.no_preview:
+            preview_assembled_shattered(pieces, w, h, save_path=output_dir_name + '/preview_assembled.png')
+            preview_grid_shattered(pieces, save_path=output_dir_name + '/preview_grid.png')
+    else:
+        # Handles 'curved' and 'regular'
+        pieces = create_jigsaw(args.image, args.num_pieces, shape_type=args.style, 
+                               output_dir=output_dir_name + '/pieces', seed=args.seed)
+        if not args.no_preview:
+            preview_assembled(pieces, save_path=output_dir_name + '/preview_assembled.png')
+            preview_grid(pieces, save_path=output_dir_name + '/preview_grid.png')
+
+    print("Done!")
