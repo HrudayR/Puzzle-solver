@@ -1,0 +1,5 @@
+# Ignore everything in Dataset folder(s)
+Dataset/*
+
+# Keep Dataset folder itself tracked (optional)
+!Dataset/
