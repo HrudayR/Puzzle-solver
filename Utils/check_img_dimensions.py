@@ -45,7 +45,7 @@ def scan_pieces_directory(base_path):
             print(f"Total images processed: {image_count}")
 
 # Your base directory
-base_dir = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/train_set_shattered"
+base_dir = "../Dataset/train_set_shattered"
 
 # Run the scanner
 scan_pieces_directory(base_dir)
