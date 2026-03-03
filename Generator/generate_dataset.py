@@ -6,6 +6,7 @@ from PIL import Image
 from tqdm import tqdm
 import io
 import contextlib
+import shutil
 
 from puzzle_generator import create_shattered , create_jigsaw, preview_assembled_shattered, preview_assembled, preview_grid_shattered, preview_grid
 
@@ -151,7 +152,8 @@ def generate_pieces(image_dir: Path, output_dir: Path, n_pieces: int = 20, style
             with suppress_stdout():
                 pieces = create_shattered(img, num_pieces=n_pieces, output_dir=output_dir / img.stem / "pieces")
                 (output_dir / img.stem / "previews").mkdir(parents=True, exist_ok=True)
-                preview_assembled_shattered(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png", img_w=img_w, img_h=img_h)
+                # preview_assembled_shattered(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png", img_w=img_w, img_h=img_h)
+                shutil.copy(img, output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
                 preview_grid_shattered(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_grid.png")
 
     elif style == "curved":
@@ -159,7 +161,8 @@ def generate_pieces(image_dir: Path, output_dir: Path, n_pieces: int = 20, style
             with suppress_stdout():
                 pieces = create_jigsaw(img, num_pieces=n_pieces, output_dir=output_dir / img.stem / "pieces")
                 (output_dir / img.stem / "previews").mkdir(parents=True, exist_ok=True)
-                preview_assembled(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
+                # preview_assembled(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
+                shutil.copy(img, output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
                 preview_grid(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_grid.png")
     else:
         raise ValueError(f"Unknown style: {style}")
