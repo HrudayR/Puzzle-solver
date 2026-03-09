@@ -17,7 +17,7 @@ INPUT = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Datase
 EMBEDDING_SIZE = 64
 
 # Directory where dataset .npy files will be saved (used only when CREATE_DATASET=True).
-# Files are always named  fourier.npy  and  fourier_target.npy  inside this directory.
+# Files are always named  fourier.npy  inside this directory.
 OUTPUT_DIR = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset"  # e.g. "/path/to/output_dir"
 
 # Recursively search subdirectories for images.
@@ -36,13 +36,12 @@ TEST_N = 5
 
 # ── Sampling ─────────────────────────────────────────────────────────────────
 # Take only the first SAMPLE images to embed. Set to None to use all images.
-# Use this to only inspect the embeddings - does not control the size of the dataset created
-SAMPLE = 200  # e.g. 100
+SAMPLE = None  # e.g. 100
 
 # ── Dataset creation ─────────────────────────────────────────────────────────
 # Set CREATE_DATASET = True to build a training dataset where each puzzle
-# directory becomes one sample (piece embeddings concatenated → X, 0-based
-# piece indices → y). Saves to OUTPUT_DIR as fourier.npy / fourier_target.npy.
+# directory becomes one sample (piece embeddings concatenated → X).
+# Saves to OUTPUT_DIR as fourier.npy.
 CREATE_DATASET = True
 
 # ===========================================================================
@@ -171,20 +170,18 @@ def create_dataset(
     output_dir: Path,
 ) -> None:
     """
-    Build a training dataset from a directory of puzzle directories.
+    Build a dataset from a directory of puzzle directories.
 
     Each puzzle directory becomes one training sample:
       - X row : all piece embeddings concatenated into a single flat vector,
                 sorted by filename so ordering is deterministic.
-      - y row : 0-based index vector [0, 1, ..., num_pieces-1].
 
     Always saves to:
-      <output_dir>/fourier.npy        (embeddings)
-      <output_dir>/fourier_target.npy (targets)
+      <output_dir>/fourier.npy (embeddings)
 
     Puzzles where any piece fails to embed are skipped with a warning.
     """
-    all_piece_paths = collect_image_paths(root, recursive=True, glob_pattern=glob_pattern)
+    all_piece_paths = collect_image_paths(root, recursive=True, glob_pattern=glob_pattern)[:200]
     if not all_piece_paths:
         print("[ERROR] No images found under the given glob pattern.", file=sys.stderr)
         sys.exit(1)
@@ -197,8 +194,6 @@ def create_dataset(
     print(f"\nFound {len(puzzles)} puzzle director{'y' if len(puzzles) == 1 else 'ies'}.\n")
 
     X_rows: list[np.ndarray] = []
-    y_rows: list[np.ndarray] = []
-    puzzle_dirs: list[str] = []
     skipped = 0
 
     for puzzle_dir, piece_paths in sorted(puzzles.items()):
@@ -219,60 +214,35 @@ def create_dataset(
             continue
 
         n = len(embeddings)
-        # Shuffle piece order, applying the same permutation to both X and y
-        perm = np.random.permutation(n)
-        embeddings = [embeddings[i] for i in perm]
-        X_rows.append(np.concatenate(embeddings))               # flat vector: n * embedding_size
-        y_rows.append(np.arange(0, n, dtype=np.int32)[perm])    # e.g. [2, 4, 1, 3, ...]
-        puzzle_dirs.append(str(puzzle_dir))
+        X_rows.append(np.concatenate(embeddings))  # flat vector: n * embedding_size
         print(f"  ✓ {puzzle_dir.name:<30}  {n} pieces  →  X shape ({n * embedding_size},)")
 
     if not X_rows:
         print("[ERROR] No puzzles were successfully embedded.", file=sys.stderr)
         sys.exit(1)
 
-    # Pad rows to uniform length (0.0 for X, -1 for y)
+    # Pad rows to uniform length (0.0 padding)
     max_x_len = max(xr.shape[0] for xr in X_rows)
-    max_y_len = max(yr.shape[0] for yr in y_rows)
-
     X = np.zeros((len(X_rows), max_x_len), dtype=np.float64)
-    y = np.full((len(y_rows), max_y_len), fill_value=-1, dtype=np.int32)
-    for i, (xr, yr) in enumerate(zip(X_rows, y_rows)):
+    for i, xr in enumerate(X_rows):
         X[i, :xr.shape[0]] = xr
-        y[i, :yr.shape[0]] = yr
 
     output_dir.mkdir(parents=True, exist_ok=True)
     x_path = output_dir / "fourier.npy"
-    y_path = output_dir / "fourier_target.npy"
-
     np.save(x_path, X)
-    np.save(y_path, y)
 
     print(f"\n{'='*60}")
     print(f"  Embeddings saved -> {x_path}  ({x_path.stat().st_size / 1024:.1f} KB)")
-    print(f"  Targets saved    -> {y_path}  ({y_path.stat().st_size / 1024:.1f} KB)")
     print(f"  Puzzles saved    : {len(X_rows)}")
     print(f"  Puzzles skipped  : {skipped}")
     print(f"  Embedding size   : {embedding_size} per piece")
     print(f"{'='*60}")
 
 
-def load_dataset(
-    x_path: Path,
-    y_path: Path,
-) -> tuple[list[np.ndarray], list[np.ndarray]]:
-    """
-    Load a dataset saved by create_dataset().
-
-    Returns:
-        X : list of 1-D float arrays (one flat vector per puzzle)
-        y : list of 1-D int arrays   (0-based piece indices per puzzle)
-    """
-    X_pad = np.load(x_path)   # shape (N, max_x_len), padded with 0.0
-    y_pad = np.load(y_path)   # shape (N, max_y_len), padded with -1
-    X = [row[row != 0.0] for row in X_pad]
-    y = [row[row != -1]  for row in y_pad]
-    return X, y
+def load_dataset(x_path: Path) -> list[np.ndarray]:
+    """Load a dataset saved by create_dataset(), stripping zero-padding."""
+    X_pad = np.load(x_path)  # shape (N, max_x_len), padded with 0.0
+    return [row[row != 0.0] for row in X_pad]
 
 
 # ---------------------------------------------------------------------------
