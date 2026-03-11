@@ -66,6 +66,12 @@ def resize_and_crop(img: Image.Image, target_w: int, target_h: int) -> Image.Ima
     return img.crop((left, top, left + target_w, top + target_h))
 
 
+def seed_from_image(image_path: Path) -> int:
+    """Stable per-image seed derived from the filename, so every image gets
+    unique cut patterns but re-runs on the same file are reproducible."""
+    return hash(image_path.name) & 0x7FFFFFFF
+
+
 # ---------------------------------------------------------------------------
 # Core logic
 # ---------------------------------------------------------------------------
@@ -150,18 +156,18 @@ def generate_pieces(image_dir: Path, output_dir: Path, n_pieces: int = 20, style
     if style == "shattered":
         for img in tqdm(image_paths, desc="Generating pieces", unit="img"):
             with suppress_stdout():
-                pieces = create_shattered(img, num_pieces=n_pieces, output_dir=output_dir / img.stem / "pieces")
+                seed = seed_from_image(img)
+                pieces = create_shattered(img, num_pieces=n_pieces, output_dir=output_dir / img.stem / "pieces", seed=seed)
                 (output_dir / img.stem / "previews").mkdir(parents=True, exist_ok=True)
-                # preview_assembled_shattered(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png", img_w=img_w, img_h=img_h)
                 shutil.copy(img, output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
                 preview_grid_shattered(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_grid.png")
 
     elif style == "curved":
         for img in tqdm(image_paths, desc="Generating pieces", unit="img"):
             with suppress_stdout():
-                pieces = create_jigsaw(img, num_pieces=n_pieces, output_dir=output_dir / img.stem / "pieces")
+                seed = seed_from_image(img)
+                pieces = create_jigsaw(img, num_pieces=n_pieces, shape_type="curved", output_dir=output_dir / img.stem / "pieces", seed=seed)
                 (output_dir / img.stem / "previews").mkdir(parents=True, exist_ok=True)
-                # preview_assembled(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
                 shutil.copy(img, output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
                 preview_grid(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_grid.png")
     else:
