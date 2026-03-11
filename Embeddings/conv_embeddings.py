@@ -210,7 +210,7 @@ def create_dataset(
     Saves to:
       <output_dir>/gabor.npy — embeddings
     """
-    all_paths = collect_image_paths(root, glob_pattern)[:200]
+    all_paths = collect_image_paths(root, glob_pattern)
     if not all_paths:
         print("[ERROR] No images found.", file=sys.stderr)
         sys.exit(1)
