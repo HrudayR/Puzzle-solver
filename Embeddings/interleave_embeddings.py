@@ -5,6 +5,7 @@ import sys
 
 OUTPUT_DIRECTORY  = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/"
 EMBEDDING_SIZE = 64
+NUMBER_OF_PIECES = 24
 
 
 def pair_embeddings(conv_embeddings, fourier_embeddings):
@@ -22,7 +23,7 @@ def pair_embeddings(conv_embeddings, fourier_embeddings):
         f"Shapes must match: {conv_embeddings.shape} vs {fourier_embeddings.shape}"
     
     packed_array = np.stack([conv_embeddings, fourier_embeddings], axis=-1)
-    target_array = np.array([np.arange(20) for x in packed_array])
+    target_array = np.array([np.arange(NUMBER_OF_PIECES) for x in packed_array])
 
     return packed_array, target_array
 
@@ -42,7 +43,7 @@ def shuffle_arrays(packed_array, target_array):
             shuffled_target.append(target_array[i][j])
             chunk = packed_array[i][j * EMBEDDING_SIZE : (j + 1) * EMBEDDING_SIZE]
             shuffled_packed.extend(chunk)
-            one_hot_vector = [0] * 20
+            one_hot_vector = [0] * NUMBER_OF_PIECES
             one_hot_vector[j] = 1
             shuffled_target_one_hot.append(one_hot_vector)
 
