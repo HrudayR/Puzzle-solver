@@ -390,6 +390,64 @@ def preview_grid_shattered(pieces, save_path='preview_shattered_grid.png',
 
 
 # ---------------------------------------------------------------------------
+# Square grid pieces
+# ---------------------------------------------------------------------------
+
+def create_square(image_path, num_pieces, output_dir='puzzle_square', seed=42):
+    """
+    Cut an image into uniform square pieces.
+
+    A square side length is chosen so the total number of pieces approximates
+    *num_pieces*.  The image is center-cropped to an exact multiple of *side*
+    in both dimensions so every piece is the same size with no partial edges.
+    """
+    img = Image.open(image_path).convert('RGBA')
+    img_w, img_h = img.size
+
+    side = int(math.sqrt(img_w * img_h / num_pieces))
+    side = max(side, 1)
+    cols = img_w // side
+    rows = img_h // side
+
+    crop_w = cols * side
+    crop_h = rows * side
+    left = (img_w - crop_w) // 2
+    top  = (img_h - crop_h) // 2
+    img = img.crop((left, top, left + crop_w, top + crop_h))
+    img_array = np.array(img)
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    pieces = []
+    for piece_id, (r, c) in enumerate(
+        (r, c) for r in range(rows) for c in range(cols)
+    ):
+        x1, y1 = c * side, r * side
+        x2, y2 = x1 + side, y1 + side
+        piece_array = np.array(img.crop((x1, y1, x2, y2)))
+
+        pieces.append({
+            'id':        piece_id,
+            'path':      os.path.join(output_dir, f'piece_{piece_id:03d}.png'),
+            'bbox':      (x1, y1, x2, y2),
+            'piece_img': piece_array,
+            'grid_pos':  (r, c),
+            'pad':       0,
+            'pw': side, 'ph': side,
+            'canvas_offset': (0, 0),
+        })
+
+    pieces, max_w, max_h = normalize_piece_sizes(pieces)
+
+    for piece in pieces:
+        Image.fromarray(piece['piece_img'], 'RGBA').save(piece['path'])
+
+    print(f"Generated {len(pieces)} square pieces -> '{output_dir}' "
+          f"(uniform canvas {max_w}x{max_h})")
+    return pieces
+
+
+# ---------------------------------------------------------------------------
 # Main puzzle creator
 # ---------------------------------------------------------------------------
 
@@ -518,8 +576,8 @@ if __name__ == '__main__':
     parser.add_argument("image", help="Path to the source image file")
     parser.add_argument("-n", "--num_pieces", type=int, default=20,
                         help="Approximate number of pieces to generate (default: 20)")
-    parser.add_argument("-s", "--style", choices=['curved', 'shattered', 'regular'], default='curved',
-                        help="Puzzle style: 'curved' (jigsaw), 'shattered' (Voronoi), or 'regular' (rectangles)")
+    parser.add_argument("-s", "--style", choices=['curved', 'shattered', 'regular', 'square'], default='curved',
+                        help="Puzzle style: 'curved' (jigsaw), 'shattered' (Voronoi), 'regular' (rectangles), or 'square'")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for deterministic piece shapes")
     parser.add_argument("--no-preview", action="store_true",
@@ -544,6 +602,12 @@ if __name__ == '__main__':
             preview_assembled_shattered(pieces, w, h,
                                         save_path=output_dir_name + '/preview_assembled.png')
             preview_grid_shattered(pieces, save_path=output_dir_name + '/preview_grid.png')
+    elif args.style == 'square':
+        pieces = create_square(args.image, args.num_pieces,
+                               output_dir=output_dir_name + '/pieces', seed=args.seed)
+        if not args.no_preview:
+            preview_assembled(pieces, save_path=output_dir_name + '/preview_assembled.png')
+            preview_grid(pieces, save_path=output_dir_name + '/preview_grid.png')
     else:
         pieces = create_jigsaw(args.image, args.num_pieces, shape_type=args.style,
                                output_dir=output_dir_name + '/pieces', seed=args.seed)

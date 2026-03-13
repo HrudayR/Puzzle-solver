@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-# Use absolute paths or derive them from the script location
-TARGET_DIR="/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver"
+# Derive paths from the script's own location (works from any machine)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TARGET_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DATASET_DIR="$TARGET_DIR/Dataset/ILSVRC_train"
 GENERATOR_DIR="$TARGET_DIR/Generator"
 OUTPUT_DIR="$TARGET_DIR/Dataset"
@@ -35,6 +36,10 @@ generate_datasets() {
         echo "Generating 'curved' style dataset..."
         mkdir -p "$OUTPUT_DIR/train_set_curved"
         python generate_dataset.py generate "$OUTPUT_DIR/cropped" "$OUTPUT_DIR/train_set_curved" --num-pieces 20 --style curved
+
+        echo "Generating 'square' style dataset..."
+        mkdir -p "$OUTPUT_DIR/train_set_square"
+        python generate_dataset.py generate "$OUTPUT_DIR/cropped" "$OUTPUT_DIR/train_set_square" --num-pieces 20 --style square
 
         echo "✅ Dataset generation completed."
     )

@@ -8,7 +8,7 @@ import io
 import contextlib
 import shutil
 
-from puzzle_generator import create_shattered , create_jigsaw, preview_assembled_shattered, preview_assembled, preview_grid_shattered, preview_grid
+from puzzle_generator import create_shattered, create_jigsaw, create_square, preview_assembled_shattered, preview_assembled, preview_grid_shattered, preview_grid
 
 
 @contextlib.contextmanager
@@ -164,6 +164,14 @@ def generate_pieces(image_dir: Path, output_dir: Path, n_pieces: int = 20, style
                 # preview_assembled(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
                 shutil.copy(img, output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
                 preview_grid(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_grid.png")
+
+    elif style == "square":
+        for img in tqdm(image_paths, desc="Generating pieces", unit="img"):
+            with suppress_stdout():
+                pieces = create_square(img, num_pieces=n_pieces, output_dir=output_dir / img.stem / "pieces")
+                (output_dir / img.stem / "previews").mkdir(parents=True, exist_ok=True)
+                shutil.copy(img, output_dir / img.stem / "previews" / f"{img.stem}_shattered_preview.png")
+                preview_grid(pieces=pieces, save_path=output_dir / img.stem / "previews" / f"{img.stem}_shattered_grid.png")
     else:
         raise ValueError(f"Unknown style: {style}")
 
@@ -207,7 +215,7 @@ def build_parser() -> argparse.ArgumentParser:
     gen_parser.add_argument("output_dir", help="Directory where pieces are saved.")
     gen_parser.add_argument("--num-pieces", type=int, default=20,
                             help="Number of pieces per image. Default: 20.")
-    gen_parser.add_argument("--style", choices=["shattered", "curved"], default="shattered",
+    gen_parser.add_argument("--style", choices=["shattered", "curved", "square"], default="shattered",
                             help="Puzzle style. Default: shattered.")
 
     return parser
