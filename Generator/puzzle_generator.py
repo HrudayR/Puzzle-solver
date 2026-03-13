@@ -567,6 +567,20 @@ def preview_grid(pieces, save_path='preview_grid.png'):
 
 
 # ---------------------------------------------------------------------------
+# Derive a deterministic seed from an image path
+# ---------------------------------------------------------------------------
+
+def seed_from_image(image_path):
+    """
+    Produce a stable integer seed derived from the image filename.
+    This means every unique filename gets a unique cut pattern, but
+    re-running on the same file always yields the same pieces.
+    """
+    name = os.path.basename(image_path)
+    return hash(name) & 0x7FFFFFFF   # positive 31-bit int
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -589,15 +603,19 @@ if __name__ == '__main__':
         print(f"Error: File {args.image} not found.")
         exit(1)
 
+    # Use caller-supplied seed if given; otherwise derive one from the filename
+    # so that different images always produce different cut patterns.
+    seed = args.seed if args.seed is not None else seed_from_image(args.image)
+
     img_tmp = Image.open(args.image)
     w, h = img_tmp.size
     output_dir_name = f"./{args.style}_{args.num_pieces}"
 
-    print(f"Processing '{args.image}' ({w}x{h}) into {args.num_pieces} {args.style} pieces...")
+    print(f"Processing '{args.image}' ({w}x{h}) into {args.num_pieces} {args.style} pieces... (seed={seed})")
 
     if args.style == 'shattered':
         pieces = create_shattered(args.image, args.num_pieces,
-                                  output_dir=output_dir_name + '/pieces', seed=args.seed)
+                                  output_dir=output_dir_name + '/pieces', seed=seed)
         if not args.no_preview:
             preview_assembled_shattered(pieces, w, h,
                                         save_path=output_dir_name + '/preview_assembled.png')
@@ -610,7 +628,7 @@ if __name__ == '__main__':
             preview_grid(pieces, save_path=output_dir_name + '/preview_grid.png')
     else:
         pieces = create_jigsaw(args.image, args.num_pieces, shape_type=args.style,
-                               output_dir=output_dir_name + '/pieces', seed=args.seed)
+                               output_dir=output_dir_name + '/pieces', seed=seed)
         if not args.no_preview:
             preview_assembled(pieces, save_path=output_dir_name + '/preview_assembled.png')
             preview_grid(pieces, save_path=output_dir_name + '/preview_grid.png')

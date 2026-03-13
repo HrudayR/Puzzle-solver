@@ -181,7 +181,7 @@ def create_dataset(
 
     Puzzles where any piece fails to embed are skipped with a warning.
     """
-    all_piece_paths = collect_image_paths(root, recursive=True, glob_pattern=glob_pattern)[:200]
+    all_piece_paths = collect_image_paths(root, recursive=True, glob_pattern=glob_pattern)
     if not all_piece_paths:
         print("[ERROR] No images found under the given glob pattern.", file=sys.stderr)
         sys.exit(1)
