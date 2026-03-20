@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-EMBEDDING_SIZE = 64
+EMBEDDING_SIZE = 128
 NUMBER_OF_PIECES = 20
+BATCH_SIZE = 8
+PIECE_DIM = 3 * EMBEDDING_SIZE
 
 def sinkhorn(log_alpha, n_iters=20):
     """Normalize a matrix to be doubly stochastic via Sinkhorn iterations (in log space)."""
@@ -26,78 +28,102 @@ def sinkhorn_loss(logits, target, n_iters=20, eps=1e-8):
     return loss
 
 
+def augment_batch(x, y, k=4):
+    """
+    Given a batch of puzzles, create k random reshuffles of each.
+    x: (B, N, D)
+    y: (B, N, N)  one-hot permutation matrices
+    Returns (B*k, N, D) and (B*k, N, N)
+    """
+    B, N, D = x.shape
+    xs, ys = [], []
+    for _ in range(k):
+        perm = torch.stack([torch.randperm(N) for _ in range(B)])  # (B, N)
+        x_shuf = torch.stack([x[b][perm[b]] for b in range(B)])    # (B, N, D)
+        # Build new one-hot: y_shuf[b, s, orig] = 1 where orig = perm[b][s]
+        y_shuf = torch.zeros_like(y)
+        for b in range(B):
+            for s in range(N):
+                orig = perm[b, s].item()
+                y_shuf[b, s, orig] = 1
+        xs.append(x_shuf)
+        ys.append(y_shuf)
+    return torch.cat(xs), torch.cat(ys)
+
 class PuzzleNet(nn.Module):
-    def __init__(self, d=2560, pair_dim=1, num_pieces=20):
+    def __init__(self, d=1280, pair_dim=2, num_pieces=20):
         super(PuzzleNet, self).__init__()
         
         self.num_pieces = num_pieces
-        
-        self.network = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(d * pair_dim, 256),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(128, num_pieces * num_pieces)
+
+        # Project each piece to d_model
+        self.input_proj = nn.Sequential(
+            nn.Linear(piece_dim, d_model),
+            nn.LayerNorm(d_model),
         )
-    
+
+        # Transformer encoder — permutation invariant, 
+        # reasons about all pieces together
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=nhead,
+            dim_feedforward=256, dropout=0.1,
+            batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer, num_layers=num_layers
+        )
+
+        # Output head
+        self.fc = nn.Linear(d_model, num_pieces)
+
     def forward(self, x):
-        logits = self.network(x)
-        return logits.view(-1, self.num_pieces, self.num_pieces)
+        # x: (B, N, piece_dim)
+        x = self.input_proj(x)           # (B, N, d_model)
+        x = self.transformer(x)          # (B, N, d_model)
+        logits = self.fc(x)              # (B, N, N)
+        return logits
 
 
 class PuzzleNetWithAttention(nn.Module):
-    def __init__(self, d=2560, pair_dim=1, num_pieces=20, embed_dim=256, num_heads=4):
-        super(PuzzleNetWithAttention, self).__init__()
+    def __init__(self, d=1280, pair_dim=2, num_pieces=20, embed_dim=256, num_heads=4):
+        super(PuzzleNet, self).__init__()
         
         self.num_pieces = num_pieces
 
-        # First stage: projection and attention
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(d * pair_dim, embed_dim)
-        self.relu1 = nn.ReLU()
-        
-        # Multi-head self-attention block
-        self.attn = nn.MultiheadAttention(embed_dim=embed_dim, num_heads=num_heads, batch_first=True)
-        self.dropout1 = nn.Dropout(0.2)
-        
-        # Second stage: feed-forward layers
-        self.fc2 = nn.Linear(embed_dim, 128)
-        self.relu2 = nn.ReLU()
-        self.dropout2 = nn.Dropout(0.2)
-        
-        self.output = nn.Linear(128, num_pieces * num_pieces)
+#         # Wider piece encoder — don't compress too aggressively
+#         self.piece_encoder = nn.Sequential(
+#             nn.Linear(piece_dim, 256),
+#             nn.LayerNorm(256),
+#             nn.ReLU(),
+#             nn.Dropout(0.2),
+#             nn.Linear(256, 128),
+#             nn.LayerNorm(128),
+#             nn.ReLU(),
+#         )
 
-    def forward(self, x):
-        # Flatten spatial dimensions but preserve batch
-        x = self.flatten(x)               # (batch, d * pair_dim)
-        x = self.fc1(x)
-        x = self.relu1(x)
+#         # Wider scorer — give it room to reason across 20 pieces
+#         self.scorer = nn.Sequential(
+#             nn.BatchNorm1d(num_pieces * 128),      # 2560
+#             nn.Linear(num_pieces * 128, 1024),
+#             nn.ReLU(),
+#             nn.Dropout(0.3),
+#             nn.Linear(1024, 512),
+#             nn.ReLU(),
+#             nn.Dropout(0.3),
+#             nn.Linear(512, num_pieces * num_pieces),
+#         )
 
-        # Expand into a sequence for attention — treating each input as one token
-        # If you have multiple pair features, replace unsqueeze with reshaping logic to (batch, seq_len, embed_dim)
-        x = x.unsqueeze(1)                # (batch, seq_len=1, embed_dim)
-        x, _ = self.attn(x, x, x)         # Self-attention
-        x = self.dropout1(x)
-        x = x.squeeze(1)                  # (batch, embed_dim)
-        
-        # Continue through MLP
-        x = self.fc2(x)
-        x = self.relu2(x)
-        x = self.dropout2(x)
-        logits = self.output(x)
-
-        # Output shape reshaped for puzzle grid
-        return logits.view(-1, self.num_pieces, self.num_pieces)
-
-
+#     def forward(self, x):
+#         B, N, D = x.shape
+#         piece_embs = self.piece_encoder(x.view(B * N, D))  # (B*N, 128)
+#         piece_embs = piece_embs.view(B, N * 128)           # (B, 2560)
+#         logits = self.scorer(piece_embs)
+#         return logits.view(B, N, N)
 
 
 if __name__ == "__main__":
-    x = np.load("/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/curved_embeddings_20/paired_embeddings.npy")
-    y = np.load("/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/curved_embeddings_20/targets_one_hot.npy")
+    x = np.load("/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/paired_embeddings_curved_128.npy")
+    y = np.load("/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/targets_one_hot_curved_128.npy")
 
     x = torch.tensor(x, dtype=torch.float32)
     y = torch.tensor(y, dtype=torch.float32)
@@ -116,28 +142,69 @@ if __name__ == "__main__":
 
     print(f"Train size: {x_train.shape[0]} | Test size: {x_test.shape[0]}")
 
-    # Legacy paired embeddings: two modalities × EMBEDDING_SIZE per piece → pair_dim=2
-    model = PuzzleNet(
-        d=NUMBER_OF_PIECES * EMBEDDING_SIZE,
-        pair_dim=2,
-        num_pieces=NUMBER_OF_PIECES,
-    )
+    model = PuzzleNet(d=NUMBER_OF_PIECES * EMBEDDING_SIZE, num_pieces=NUMBER_OF_PIECES)
     print(model)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+    num_train = x_train.shape[0]
 
     for epoch in range(1000):
         model.train()
-        optimizer.zero_grad()
-        logits = model(x_train)                              # (B, 24, 24)
-        loss = sinkhorn_loss(logits, y_train)
-        loss.backward()
-        optimizer.step()
+        epoch_loss = 0.0
+        num_batches = 0
+
+        # Mini-batch training
+        perm = torch.randperm(num_train)
+        for i in range(0, num_train, BATCH_SIZE):
+            batch_idx = perm[i:i + BATCH_SIZE]
+            x_batch = x_train[batch_idx]
+            y_batch = y_train[batch_idx]
+            # x_batch, y_batch = augment_batch(x_train[batch_idx], y_train[batch_idx], k=4)
+
+            optimizer.zero_grad()
+            x_batch = x_batch + torch.randn_like(x_batch) * 0.01
+            logits = model(x_batch)
+            loss = sinkhorn_loss(logits, y_batch)
+            loss.backward()
+            optimizer.step()
+
+            epoch_loss += loss.item()
+            num_batches += 1
+
+        avg_train_loss = epoch_loss / num_batches
 
         model.eval()
         with torch.no_grad():
             test_logits = model(x_test)
             test_loss = sinkhorn_loss(test_logits, y_test)
+
+            soft_predictions = sinkhorn(test_logits, n_iters=20) 
+    
+            # 2. Pick the very first sample in the test set to inspect
+            sample_idx = 0
+            pred_matrix = soft_predictions[sample_idx]  # Shape: (20, 20)
+            true_matrix = y_test[sample_idx]           # Shape: (20, 20)
+            
+            # 3. Convert matrices to "Hard" assignments (indices)
+            # This tells us: "Slot 0 -> Piece X, Slot 1 -> Piece Y..."
+            pred_indices = pred_matrix.argmax(dim=-1)
+            true_indices = true_matrix.argmax(dim=-1)
+            
+            # 4. Get the confidence (probability) the model had for its choices
+            confidences = pred_matrix.max(dim=-1).values
+
+            print(f"\n--- Epoch {epoch+1} Sample Results ---")
+            print(f"Target:    {true_indices.tolist()}")
+            print(f"Predicted: {pred_indices.tolist()}")
+            
+            # Calculate matches
+            matches = (pred_indices == true_indices).sum().item()
+            print(f"Correct Assignments in this sample: {matches}/{NUMBER_OF_PIECES}")
+            
+            # Optional: Print the first 5 slot confidences
+            print(f"Confidence (first 5 slots): {confidences[:5].tolist()}")
+            print("--------------------------------------\n")
 
         print(f"Epoch {epoch+1}/1000 | Train Loss: {loss.item():.4f} | Test Loss: {test_loss.item():.4f}")
 
