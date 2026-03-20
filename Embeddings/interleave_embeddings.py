@@ -1,93 +1,79 @@
 import numpy as np
 import sys
-# np.set_printoptions(threshold=sys.maxsize)
+
+OUTPUT_DIRECTORY   = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/"
+EMBEDDING_SIZE     = 128   # conv and fourier
+NUMBER_OF_PIECES   = 20
+PIECE_DIM          = 3 * EMBEDDING_SIZE
 
 
-OUTPUT_DIRECTORY  = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/"
-EMBEDDING_SIZE = 64
-NUMBER_OF_PIECES = 24
-
-
-def pair_embeddings(conv_embeddings, fourier_embeddings):
+def pair_embeddings(conv_embeddings, fourier_embeddings, color_embeddings):
     """
-    Pair conv and fourier embeddings element-wise.
-    
+    Pair conv, fourier and color embeddings per piece.
+
     Args:
-        conv_embeddings: np.ndarray of shape (N, D)
-        fourier_embeddings: np.ndarray of shape (N, D)
-    
+        conv_embeddings:    (N_puzzles, N_pieces * EMBEDDING_SIZE)
+        fourier_embeddings: (N_puzzles, N_pieces * EMBEDDING_SIZE)
+        color_embeddings:   (N_puzzles, N_pieces * COLOR_EMBEDDING_SIZE)
+
     Returns:
-        np.ndarray of shape (N, D, 2) where last dim is [conv_val, fourier_val]
+        packed_array: (N_puzzles, N_pieces, PIECE_DIM)
+            Each piece gets [conv | fourier | color] concatenated.
+        target_array: (N_puzzles, N_pieces)
     """
-    assert conv_embeddings.shape == fourier_embeddings.shape, \
-        f"Shapes must match: {conv_embeddings.shape} vs {fourier_embeddings.shape}"
-    
-    packed_array = np.stack([conv_embeddings, fourier_embeddings], axis=-1)
-    target_array = np.array([np.arange(NUMBER_OF_PIECES) for x in packed_array])
+    N = conv_embeddings.shape[0]
+    assert fourier_embeddings.shape[0] == N and color_embeddings.shape[0] == N
+
+    conv_r    = conv_embeddings.reshape(N, NUMBER_OF_PIECES, EMBEDDING_SIZE)
+    fourier_r = fourier_embeddings.reshape(N, NUMBER_OF_PIECES, EMBEDDING_SIZE)
+    color_r   = color_embeddings.reshape(N, NUMBER_OF_PIECES, EMBEDDING_SIZE)
+
+    # (N_puzzles, N_pieces, PIECE_DIM)
+    packed_array = np.concatenate([conv_r, fourier_r, color_r], axis=-1)
+    target_array = np.tile(np.arange(NUMBER_OF_PIECES), (N, 1))
 
     return packed_array, target_array
 
 
 def shuffle_arrays(packed_array, target_array):
-    final_packed = []
-    final_target = []
-    final_target_one_hot = []
+    # unchanged — works on any feature dim
+    N, P, F = packed_array.shape
+    final_packed        = np.zeros_like(packed_array)
+    final_target        = np.zeros_like(target_array)
+    final_target_onehot = np.zeros((N, P, P), dtype=np.int32)
 
-    for i in range(len(target_array)):
-        indices = np.random.permutation(len(target_array[i]))
-        shuffled_target = []
-        shuffled_packed = []
-        shuffled_target_one_hot = []
+    for i in range(N):
+        perm = np.random.permutation(P)
 
-        for j in indices:
-            shuffled_target.append(target_array[i][j])
-            chunk = packed_array[i][j * EMBEDDING_SIZE : (j + 1) * EMBEDDING_SIZE]
-            shuffled_packed.extend(chunk)
-            one_hot_vector = [0] * NUMBER_OF_PIECES
-            one_hot_vector[j] = 1
-            shuffled_target_one_hot.append(one_hot_vector)
+        final_packed[i] = packed_array[i][perm]
+        final_target[i] = target_array[i][perm]
 
+        for s, orig_idx in enumerate(perm):
+            final_target_onehot[i, s, orig_idx] = 1
 
-        shuffled_packed = np.array(shuffled_packed)
-        shuffled_target = np.array(shuffled_target)
-        shuffled_target_one_hot = np.array(shuffled_target_one_hot)
+        for s in range(P):
+            assert np.allclose(final_packed[i, s], packed_array[i, perm[s]]), \
+                f"Mismatch at puzzle {i}, slot {s}"
 
-        # Verification
-        for rank, original_idx in enumerate(shuffled_target):
-            original_chunk = packed_array[i][original_idx * EMBEDDING_SIZE : (original_idx + 1) * EMBEDDING_SIZE]
-            shuffled_chunk = shuffled_packed[rank * EMBEDDING_SIZE : (rank + 1) * EMBEDDING_SIZE]
-            assert np.allclose(original_chunk, shuffled_chunk), \
-                f"Mismatch at rank {rank} (original index {original_idx})"
-
-        print("Shuffle verified correctly!")
-        final_packed.append(shuffled_packed)
-        final_target.append(shuffled_target)
-        final_target_one_hot.append(shuffled_target_one_hot)
-    
-    return np.array(final_packed), np.array(final_target), np.array(final_target_one_hot)
+    print("Shuffle verified correctly!")
+    return final_packed, final_target, final_target_onehot
 
 
 if __name__ == "__main__":
-    conv_embeddings = np.load("/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/convolution.npy")
-    fourier_embeddings = np.load("/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/fourier.npy")
+    conv_embeddings    = np.load(f"{OUTPUT_DIRECTORY}/convolution_curved_{EMBEDDING_SIZE}.npy")
+    fourier_embeddings = np.load(f"{OUTPUT_DIRECTORY}/fourier_curved_{EMBEDDING_SIZE}.npy")
+    color_embeddings   = np.load(f"{OUTPUT_DIRECTORY}/color_curved_{EMBEDDING_SIZE}.npy")
 
     print(f"Conv Embeddings Shape:    {conv_embeddings.shape}")
     print(f"Fourier Embeddings Shape: {fourier_embeddings.shape}")
+    print(f"Color Embeddings Shape:   {color_embeddings.shape}")
 
-    packed, target = pair_embeddings(conv_embeddings, fourier_embeddings)
+    packed, target = pair_embeddings(conv_embeddings, fourier_embeddings, color_embeddings)
     packed, target, target_one_hot = shuffle_arrays(packed_array=packed, target_array=target)
 
-    print(f"\nPaired Shape: {packed.shape}  (N, D, 2)")
-    print(f"\nTarget Shape: {target.shape}  (N, D)")
+    print(f"\nPaired Shape: {packed.shape}  (N, N_pieces, {EMBEDDING_SIZE})")
+    print(f"Target Shape: {target.shape}  (N, N_pieces)")
 
-    # # Verify alignment
-    # assert np.allclose(packed[:, :, 0], conv_embeddings),    "Conv values misaligned!"
-    # assert np.allclose(packed[:, :, 1], fourier_embeddings), "Fourier values misaligned!"
-
-    
-    # print(packed)
-    # print(target)
-    # Save
-    np.save(OUTPUT_DIRECTORY + "/paired_embeddings.npy", packed)
-    np.save(OUTPUT_DIRECTORY + "/targets.npy", target)
-    np.save(OUTPUT_DIRECTORY + "/targets_one_hot.npy", target_one_hot)
+    np.save(f"{OUTPUT_DIRECTORY}/paired_embeddings_curved_{EMBEDDING_SIZE}.npy", packed)
+    np.save(f"{OUTPUT_DIRECTORY}/targets_curved_{EMBEDDING_SIZE}.npy", target)
+    np.save(f"{OUTPUT_DIRECTORY}/targets_one_hot_curved_{EMBEDDING_SIZE}.npy", target_one_hot)
