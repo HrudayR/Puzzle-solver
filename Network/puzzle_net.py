@@ -27,7 +27,7 @@ def sinkhorn_loss(logits, target, n_iters=20, eps=1e-8):
 
 
 class PuzzleNet(nn.Module):
-    def __init__(self, d=1280, pair_dim=2, num_pieces=20):
+    def __init__(self, d=2560, pair_dim=1, num_pieces=20):
         super(PuzzleNet, self).__init__()
         
         self.num_pieces = num_pieces
@@ -49,8 +49,8 @@ class PuzzleNet(nn.Module):
 
 
 class PuzzleNetWithAttention(nn.Module):
-    def __init__(self, d=1280, pair_dim=2, num_pieces=20, embed_dim=256, num_heads=4):
-        super(PuzzleNet, self).__init__()
+    def __init__(self, d=2560, pair_dim=1, num_pieces=20, embed_dim=256, num_heads=4):
+        super(PuzzleNetWithAttention, self).__init__()
         
         self.num_pieces = num_pieces
 
@@ -116,7 +116,12 @@ if __name__ == "__main__":
 
     print(f"Train size: {x_train.shape[0]} | Test size: {x_test.shape[0]}")
 
-    model = PuzzleNet(d=NUMBER_OF_PIECES * EMBEDDING_SIZE, num_pieces=NUMBER_OF_PIECES)
+    # Legacy paired embeddings: two modalities × EMBEDDING_SIZE per piece → pair_dim=2
+    model = PuzzleNet(
+        d=NUMBER_OF_PIECES * EMBEDDING_SIZE,
+        pair_dim=2,
+        num_pieces=NUMBER_OF_PIECES,
+    )
     print(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)

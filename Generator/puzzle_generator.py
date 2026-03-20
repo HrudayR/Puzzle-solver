@@ -397,17 +397,17 @@ def create_square(image_path, num_pieces, output_dir='puzzle_square', seed=42):
     """
     Cut an image into uniform square pieces.
 
-    A square side length is chosen so the total number of pieces approximates
-    *num_pieces*.  The image is center-cropped to an exact multiple of *side*
-    in both dimensions so every piece is the same size with no partial edges.
+    The grid dimensions (rows x cols) are chosen to match *num_pieces* exactly,
+    then the largest square side that fits both dimensions is derived.  The image
+    is center-cropped to an exact multiple of *side* so every piece is identical.
     """
     img = Image.open(image_path).convert('RGBA')
     img_w, img_h = img.size
 
-    side = int(math.sqrt(img_w * img_h / num_pieces))
+    rows = max(1, int(math.sqrt(num_pieces)))
+    cols = max(1, math.ceil(num_pieces / rows))
+    side = min(img_w // cols, img_h // rows)
     side = max(side, 1)
-    cols = img_w // side
-    rows = img_h // side
 
     crop_w = cols * side
     crop_h = rows * side

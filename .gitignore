@@ -3,3 +3,17 @@ Dataset/*
 
 # Keep Dataset folder itself tracked (optional)
 !Dataset/
+
+# Remove Mac files
+.DS_Store
+./cursor/
+
+# Ignore Python build artifacts
+__pycache__/
+*.pyc
+
+# Ignore training logs
+*.log
+
+# Ignore checkpoints
+Encoder/baseline/checkpoints/*
