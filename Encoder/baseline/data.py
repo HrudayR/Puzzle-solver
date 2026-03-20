@@ -36,6 +36,7 @@ class EncoderTrainConfig:
     train_ratio: float = 0.8
     num_workers: int = 0
     seed: int = 42
+    checkpoint_name: str = "encoder_phase1.pt"
 
 
 def infer_grid(n_pieces: int) -> Tuple[int, int]:

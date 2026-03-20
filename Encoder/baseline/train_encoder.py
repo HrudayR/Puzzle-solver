@@ -2,7 +2,7 @@
 """
 Phase-1 training for the Heck et al. CNN edge encoder (triplet loss on edge strips).
 
-Saves ``encoder_phase1.pt`` under ``--checkpoint-dir``.
+Saves ``encoder_phase1.pt`` (or ``--checkpoint-name``) under ``--checkpoint-dir``.
 
 Example:
   python -m Encoder.baseline.train_encoder \\
@@ -68,7 +68,7 @@ def train_phase1(cfg: EncoderTrainConfig, device: torch.device) -> PieceEncoder:
 
     out_dir = Path(cfg.checkpoint_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    ckpt_path = out_dir / "encoder_phase1.pt"
+    ckpt_path = out_dir / cfg.checkpoint_name
     history: dict = {"loss": [], "top1_acc": []}
 
     print(f"\n{'='*60}")
@@ -156,7 +156,13 @@ def main() -> None:
         "--checkpoint-dir",
         type=str,
         default=str(_ROOT / "Encoder/baseline/checkpoints"),
-        help="Directory for encoder_phase1.pt",
+        help="Directory for the Phase-1 checkpoint file",
+    )
+    parser.add_argument(
+        "--checkpoint-name",
+        type=str,
+        default="encoder_phase1.pt",
+        help="Checkpoint filename (default: encoder_phase1.pt)",
     )
     parser.add_argument("--n-pieces", type=int, default=20, help="Pieces per puzzle (must match files).")
     parser.add_argument("--grid-rows", type=int, default=None, help="Override inferred grid rows.")
@@ -182,6 +188,7 @@ def main() -> None:
     cfg = EncoderTrainConfig(
         dataset_path=args.dataset_path,
         checkpoint_dir=args.checkpoint_dir,
+        checkpoint_name=args.checkpoint_name,
         n_pieces=args.n_pieces,
         grid_rows=grid_rows,
         grid_cols=grid_cols,
