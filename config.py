@@ -21,6 +21,7 @@ STORED_Y_PATH = OUTPUT_DIR / f"targets_one_hot_curved_{EMBEDDING_SIZE}.npy"
 # ── Training ───────────────────────────────────────────────────
 EMBEDDING_MODE = "live"   # "stored" | "live"
 BATCH_SIZE     = 8
+LR             = 1e-4
 
 # ── Piece encoder (conv_learnable_embeddings.py) ───────────────
 ENCODER_CHECKPOINT = None   # set to OUTPUT_DIR / "piece_encoder.pt" once trained

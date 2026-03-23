@@ -53,76 +53,30 @@ class PieceEncoder(nn.Module):
     def __init__(self, embed_dim: int = 32):
         super().__init__()
 
-        # ── Backbone ──────────────────────────────────────────
         # 4-channel input (RGB + alpha mask) so the net sees silhouette
         self.backbone = nn.Sequential(
-            # Block 1 — low-level edges & texture  (128 → 64)
             nn.Conv2d(4, 32, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),                                    # /2
+            nn.MaxPool2d(2),
 
-            # Block 2 — connector tab geometry  (64 → 32)
             nn.Conv2d(32, 64, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),                                    # /4
-
-            # Block 3 — shape composition  (32 → 16)
-            nn.Conv2d(64, 128, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),                                    # /8
+            nn.MaxPool2d(2),
         )
 
-        # Global average pool → flat 128-d vector regardless of input size
         self.pool = nn.AdaptiveAvgPool2d(1)
-
-        # ── Projection head (used only during contrastive training) ──
-        self.projector = nn.Sequential(
-            nn.Linear(128, 128),
-            nn.ReLU(inplace=True),
-            nn.Linear(128, embed_dim),
-        )
-
-        # ── Final embedding head (used at inference time) ────
-        self.embedder = nn.Sequential(
-            nn.Linear(128, embed_dim),
-        )
-
-    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
-        """Return the 128-d backbone feature (before projection/embedding)."""
-        x = self.backbone(x)
-        return self.pool(x).flatten(1)
+        self.embedder = nn.Linear(64, embed_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Inference path: backbone → embedder → L2-normalise.
-        Returns (B, embed_dim) unit-norm vectors.
-        """
-        feat = self.forward_features(x)
-        emb  = self.embedder(feat)
-        return F.normalize(emb, p=2, dim=1)
+        x = self.backbone(x)
+        x = self.pool(x).flatten(1)
+        return F.normalize(self.embedder(x), p=2, dim=1)
 
     def forward_proj(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Training path: backbone → projector → L2-normalise.
-        Uses a separate projection head as per SimCLR best practice —
-        the backbone learns richer features when the contrastive loss
-        acts on a separate projection rather than the final embedding.
-        """
-        feat = self.forward_features(x)
-        proj = self.projector(feat)
-        return F.normalize(proj, p=2, dim=1)
+        """Alias for forward — kept for compatibility with train_encoder."""
+        return self.forward(x)
 
 
 # ─────────────────────────────────────────────────────────────

@@ -124,7 +124,7 @@ if __name__ == "__main__":
     # ── Model & optimiser ─────────────────────────────────────
     model = PuzzleTransformer(piece_dim=PIECE_DIM, num_pieces=NUMBER_OF_PIECES).to(device)
     print(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     # ── Training loop ─────────────────────────────────────────
     for epoch in range(1000):
