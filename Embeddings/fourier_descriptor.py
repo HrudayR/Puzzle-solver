@@ -7,47 +7,11 @@ Configure the script by editing the GLOBAL CONFIGURATION section below.
 """
 
 # ===========================================================================
-# GLOBAL CONFIGURATION — edit these values instead of using command-line args
-# ===========================================================================
 
-# Path to a single image file or a root directory containing puzzle pieces.
-INPUT = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/train_set_curved"
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import *
 
-# Number of Fourier coefficients to keep (embedding dimensionality).
-EMBEDDING_SIZE = 64
-
-# Directory where dataset .npy files will be saved (used only when CREATE_DATASET=True).
-# Files are always named  fourier.npy  inside this directory.
-OUTPUT_DIR = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset"  # e.g. "/path/to/output_dir"
-
-# Recursively search subdirectories for images.
-RECURSIVE = True
-
-# Glob pattern relative to INPUT for image discovery.
-GLOB_PATTERN = "*/pieces/piece_*.png"
-
-# ── Rotation invariance test ─────────────────────────────────────────────────
-# Set TEST_ROTATION = True to run a rotation-invariance test instead of
-# computing embeddings.
-TEST_ROTATION = False
-
-# Number of images to use for the rotation test.
-TEST_N = 5
-
-# ── Sampling ─────────────────────────────────────────────────────────────────
-# Take only the first SAMPLE images to embed. Set to None to use all images.
-SAMPLE = None  # e.g. 100
-
-# ── Dataset creation ─────────────────────────────────────────────────────────
-# Set CREATE_DATASET = True to build a training dataset where each puzzle
-# directory becomes one sample (piece embeddings concatenated → X).
-# Saves to OUTPUT_DIR as fourier.npy.
-CREATE_DATASET = True
-
-# ===========================================================================
-
-
-import sys
 from pathlib import Path
 
 import cv2
@@ -228,7 +192,7 @@ def create_dataset(
         X[i, :xr.shape[0]] = xr
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    x_path = output_dir / "fourier.npy"
+    x_path = output_dir / "fourier_curved_32.npy"
     np.save(x_path, X)
 
     print(f"\n{'='*60}")
@@ -328,7 +292,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    root = Path(INPUT)
+    root = DATASET_ROOT
     if not root.exists():
         print(f"[ERROR] Path does not exist: {root}", file=sys.stderr)
         sys.exit(1)
@@ -343,7 +307,7 @@ if __name__ == "__main__":
             root=root,
             embedding_size=embedding_size,
             glob_pattern=GLOB_PATTERN,
-            output_dir=Path(OUTPUT_DIR),
+            output_dir=OUTPUT_DIR,
         )
         sys.exit(0)
 

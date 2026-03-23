@@ -1,11 +1,10 @@
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from config import *
+
 import torch
 import torch.nn as nn
 import numpy as np
-
-EMBEDDING_SIZE = 128
-NUMBER_OF_PIECES = 20
-BATCH_SIZE = 8
-PIECE_DIM = 3 * EMBEDDING_SIZE
 
 def sinkhorn(log_alpha, n_iters=20):
     """Normalize a matrix to be doubly stochastic via Sinkhorn iterations (in log space)."""
@@ -50,75 +49,41 @@ def augment_batch(x, y, k=4):
         ys.append(y_shuf)
     return torch.cat(xs), torch.cat(ys)
 
+
 class PuzzleNet(nn.Module):
-    def __init__(self, d=1280, pair_dim=2, num_pieces=20):
-        super(PuzzleNet, self).__init__()
-        
+    def __init__(self, piece_dim=384, num_pieces=20):
+        super().__init__()
         self.num_pieces = num_pieces
 
-        # Project each piece to d_model
-        self.input_proj = nn.Sequential(
-            nn.Linear(piece_dim, d_model),
-            nn.LayerNorm(d_model),
+        # Wider piece encoder — don't compress too aggressively
+        self.piece_encoder = nn.Sequential(
+            nn.Linear(piece_dim, 256),
+            nn.LayerNorm(256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, 128),
+            nn.LayerNorm(128),
+            nn.ReLU(),
         )
 
-        # Transformer encoder — permutation invariant, 
-        # reasons about all pieces together
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=nhead,
-            dim_feedforward=256, dropout=0.1,
-            batch_first=True
+        # Wider scorer — give it room to reason across 20 pieces
+        self.scorer = nn.Sequential(
+            nn.BatchNorm1d(num_pieces * 128),      # 2560
+            nn.Linear(num_pieces * 128, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(512, num_pieces * num_pieces),
         )
-        self.transformer = nn.TransformerEncoder(
-            encoder_layer, num_layers=num_layers
-        )
-
-        # Output head
-        self.fc = nn.Linear(d_model, num_pieces)
 
     def forward(self, x):
-        # x: (B, N, piece_dim)
-        x = self.input_proj(x)           # (B, N, d_model)
-        x = self.transformer(x)          # (B, N, d_model)
-        logits = self.fc(x)              # (B, N, N)
-        return logits
-
-
-class PuzzleNetWithAttention(nn.Module):
-    def __init__(self, d=1280, pair_dim=2, num_pieces=20, embed_dim=256, num_heads=4):
-        super(PuzzleNet, self).__init__()
-        
-        self.num_pieces = num_pieces
-
-#         # Wider piece encoder — don't compress too aggressively
-#         self.piece_encoder = nn.Sequential(
-#             nn.Linear(piece_dim, 256),
-#             nn.LayerNorm(256),
-#             nn.ReLU(),
-#             nn.Dropout(0.2),
-#             nn.Linear(256, 128),
-#             nn.LayerNorm(128),
-#             nn.ReLU(),
-#         )
-
-#         # Wider scorer — give it room to reason across 20 pieces
-#         self.scorer = nn.Sequential(
-#             nn.BatchNorm1d(num_pieces * 128),      # 2560
-#             nn.Linear(num_pieces * 128, 1024),
-#             nn.ReLU(),
-#             nn.Dropout(0.3),
-#             nn.Linear(1024, 512),
-#             nn.ReLU(),
-#             nn.Dropout(0.3),
-#             nn.Linear(512, num_pieces * num_pieces),
-#         )
-
-#     def forward(self, x):
-#         B, N, D = x.shape
-#         piece_embs = self.piece_encoder(x.view(B * N, D))  # (B*N, 128)
-#         piece_embs = piece_embs.view(B, N * 128)           # (B, 2560)
-#         logits = self.scorer(piece_embs)
-#         return logits.view(B, N, N)
+        B, N, D = x.shape
+        piece_embs = self.piece_encoder(x.view(B * N, D))  # (B*N, 128)
+        piece_embs = piece_embs.view(B, N * 128)           # (B, 2560)
+        logits = self.scorer(piece_embs)
+        return logits.view(B, N, N)
 
 
 if __name__ == "__main__":
@@ -142,7 +107,7 @@ if __name__ == "__main__":
 
     print(f"Train size: {x_train.shape[0]} | Test size: {x_test.shape[0]}")
 
-    model = PuzzleNet(d=NUMBER_OF_PIECES * EMBEDDING_SIZE, num_pieces=NUMBER_OF_PIECES)
+    model = PuzzleNet(piece_dim=PIECE_DIM, num_pieces=NUMBER_OF_PIECES)
     print(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)

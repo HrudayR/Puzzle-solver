@@ -8,28 +8,10 @@ Configure the script by editing the GLOBAL CONFIGURATION section below.
 """
 
 # ===========================================================================
-# GLOBAL CONFIGURATION — edit these values instead of using command-line args
-# ===========================================================================
 
-# Path to the root directory containing puzzle pieces.
-INPUT = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/train_set_curved"
-
-# Glob pattern relative to INPUT for image discovery.
-GLOB_PATTERN = "*/pieces/piece_*.png"
-
-# Output embedding dimension.
-EMBEDDING_SIZE = 64
-
-# Directory where gabor.npy and gabor_target.npy are saved.
-OUTPUT_DIR = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset"  # e.g. "/path/to/output_dir"
-
-# Set CREATE_DATASET = True to build a training dataset where each puzzle
-# directory becomes one sample (piece embeddings concatenated → X, 0-based
-# piece indices → y). Saves to OUTPUT_DIR as gabor.npy / gabor_target.npy.
-CREATE_DATASET = True
-
-# ===========================================================================
-
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import *
 
 import sys
 import numpy as np
@@ -256,7 +238,7 @@ def create_dataset(
         X[i, :xr.shape[0]] = xr
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    x_path = output_dir / "convolution.npy"
+    x_path = output_dir / "convolution_curved_32.npy"
     np.save(x_path, X)
 
     print(f"\n{'='*60}")
@@ -278,7 +260,7 @@ def load_dataset(x_path: Path) -> List[np.ndarray]:
 # ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    root = Path(INPUT)
+    root = DATASET_ROOT
     if not root.exists():
         print(f"[ERROR] Path does not exist: {root}", file=sys.stderr)
         sys.exit(1)
