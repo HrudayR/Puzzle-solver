@@ -12,26 +12,11 @@ Configure the script by editing the GLOBAL CONFIGURATION section below.
 """
 
 # ===========================================================================
-# GLOBAL CONFIGURATION
-# ===========================================================================
 
-INPUT        = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/train_set_curved"
-GLOB_PATTERN = "*/pieces/piece_*.png"
-EMBEDDING_SIZE = 128
-OUTPUT_DIR   = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset"
-
-# Encoder training settings (only used when TRAIN_ENCODER = True)
-TRAIN_ENCODER   = True          # Train encoder before extracting embeddings
-ENCODER_EPOCHS  = 50            # How many epochs to train the encoder
-ENCODER_LR      = 3e-4
-ENCODER_BATCH   = 64            # Pairs per batch
-TEMPERATURE     = 0.07          # NT-Xent temperature
-CHECKPOINT_PATH = OUTPUT_DIR + "/piece_encoder.pt"  # Save/load weights here
-
-# Set CREATE_DATASET = True to extract and save embeddings after (optional) training
-CREATE_DATASET = True
-
-# ===========================================================================
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import *
+CHECKPOINT_PATH = ENCODER_CHECKPOINT if ENCODER_CHECKPOINT is not None else str(OUTPUT_DIR / "piece_encoder.pt")
 
 import sys
 import numpy as np
@@ -461,7 +446,7 @@ def create_dataset(
 # ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    root = Path(INPUT)
+    root = DATASET_ROOT
     if not root.exists():
         print(f"[ERROR] Path does not exist: {root}", file=sys.stderr)
         sys.exit(1)
@@ -499,7 +484,7 @@ if __name__ == "__main__":
             root         = root,
             glob_pattern = GLOB_PATTERN,
             embed_dim    = EMBEDDING_SIZE,
-            output_dir   = Path(OUTPUT_DIR),
+            output_dir   = OUTPUT_DIR,
             model        = model,
             device       = device,
         )

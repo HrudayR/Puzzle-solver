@@ -1,27 +1,10 @@
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from config import *
+
 import torch
 import torch.nn as nn
 import numpy as np
-
-# ── Embedding mode ────────────────────────────────────────────
-# "stored" : load pre-computed .npy files (fast, fixed shuffles)
-# "live"   : generate embeddings on the fly via PuzzleDataset
-EMBEDDING_MODE = "live"
-
-# ── Shared config ─────────────────────────────────────────────
-EMBEDDING_SIZE   = 128
-NUMBER_OF_PIECES = 20
-BATCH_SIZE       = 8
-PIECE_DIM        = 3 * EMBEDDING_SIZE
-
-# ── Stored mode paths ─────────────────────────────────────────
-STORED_X_PATH = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/paired_embeddings_curved_128.npy"
-STORED_Y_PATH = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/targets_one_hot_curved_128.npy"
-
-# ── Live mode config ──────────────────────────────────────────
-DATASET_ROOT     = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/train_set_curved"
-GLOB_PATTERN     = "*/pieces/piece_*.png"
-K_CLUSTERS       = 8
-ENCODER_CHECKPOINT = None  # set to a .pt path once the encoder has been trained
 
 def sinkhorn(log_alpha, n_iters=20):
     """Normalize a matrix to be doubly stochastic via Sinkhorn iterations (in log space)."""
