@@ -87,7 +87,9 @@ class PuzzleTransformer(nn.Module):
 if __name__ == "__main__":
     from torch.utils.data import DataLoader, TensorDataset, random_split
 
+    print("staring transformer training")
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"training on {device}")
 
     # ── Build DataLoaders ─────────────────────────────────────
     if EMBEDDING_MODE == "stored":
@@ -127,6 +129,8 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     # ── Training loop ─────────────────────────────────────────
+    best_test_loss = float("inf")
+
     for epoch in range(1000):
         model.train()
         epoch_loss, num_batches = 0.0, 0
@@ -171,6 +175,11 @@ if __name__ == "__main__":
             confidences  = pred_matrix.max(dim=-1).values
 
             matches = (pred_indices == true_indices).sum().item()
+
+        if avg_test_loss < best_test_loss:
+            best_test_loss = avg_test_loss
+            torch.save(model.state_dict(), TRANSFORMER_CHECKPOINT)
+            print(f"  [checkpoint] saved best model (test loss {best_test_loss:.4f}) -> {TRANSFORMER_CHECKPOINT}")
 
         print(f"\n{'='*60}")
         print(f"  Epoch {epoch+1}/1000  |  Train Loss: {avg_train_loss:.4f}  |  Test Loss: {avg_test_loss:.4f}")
