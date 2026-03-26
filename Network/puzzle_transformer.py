@@ -51,7 +51,7 @@ def augment_batch(x, y, k=4):
 
 class PuzzleTransformer(nn.Module):
     def __init__(self, piece_dim=384, num_pieces=20, 
-                 d_model=256, nhead=8, num_layers=4):
+                 d_model=1024, nhead=16, num_layers=6):
         super().__init__()
         self.num_pieces = num_pieces
 
@@ -65,8 +65,11 @@ class PuzzleTransformer(nn.Module):
         # reasons about all pieces together
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model, nhead=nhead,
-            dim_feedforward=256, dropout=0.1,
-            batch_first=True
+            dim_feedforward=4 * d_model,  # 4096 — standard 4x ratio
+            dropout=0.1,
+            batch_first=True,
+            activation='gelu',            # paper uses GELU
+            norm_first=True,              # pre-norm as in ViT
         )
         self.transformer = nn.TransformerEncoder(
             encoder_layer, num_layers=num_layers
