@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 # ── Embedding mode ────────────────────────────────────────────
 # "stored" : load pre-computed .npy files (fast, fixed shuffles)
@@ -170,30 +171,30 @@ if __name__ == "__main__":
         sample_x, sample_y = None, None
 
         with torch.no_grad():
+            total_correct = 0
+            total_pieces = 0
+
             for x_batch, y_batch in test_loader:
                 x_batch, y_batch = x_batch.to(device), y_batch.to(device)
                 test_logits = model(x_batch)
                 test_loss_total += sinkhorn_loss(test_logits, y_batch).item()
-                if sample_x is None:
-                    sample_x, sample_y = x_batch, y_batch  # keep first batch for inspection
+
+                soft_preds = sinkhorn(test_logits)
+                true_indices = y_batch.argmax(dim=-1).cpu()
+                for i in range(soft_preds.shape[0]):
+                    col_ind = linear_sum_assignment(
+                        soft_preds[i].cpu().numpy(), maximize=True
+                    )[1]
+                    total_correct += (torch.tensor(col_ind) == true_indices[i]).sum().item()
+                    total_pieces += NUMBER_OF_PIECES
 
             avg_test_loss  = test_loss_total / len(test_loader)
             avg_train_loss = epoch_loss / num_batches
-
-            soft_predictions = sinkhorn(model(sample_x), n_iters=20)
-            pred_matrix = soft_predictions[0]
-            true_matrix = sample_y[0]
-            pred_indices = pred_matrix.argmax(dim=-1)
-            true_indices = true_matrix.argmax(dim=-1)
-            confidences  = pred_matrix.max(dim=-1).values
-
-            matches = (pred_indices == true_indices).sum().item()
+            accuracy = total_correct / total_pieces
 
         print(f"\n{'='*60}")
         print(f"  Epoch {epoch+1}/1000  |  Train Loss: {avg_train_loss:.4f}  |  Test Loss: {avg_test_loss:.4f}")
-        print(f"  Correct: {matches}/{NUMBER_OF_PIECES}  |  Confidence (first 5): {[f'{c:.2f}' for c in confidences[:5].tolist()]}")
-        print(f"  Target:    {true_indices.tolist()}")
-        print(f"  Predicted: {pred_indices.tolist()}")
+        print(f"  Test Accuracy: {accuracy:.2%}  ({total_correct}/{total_pieces})")
         print(f"{'='*60}\n")
 
     # ── Final inference ───────────────────────────────────────
