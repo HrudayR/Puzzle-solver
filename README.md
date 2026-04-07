@@ -78,7 +78,6 @@ The figure below illustrates the full Fourier descriptor pipeline — from binar
 The following figure shows an example of matching Fourier descriptors computed from a blueprint and a photograph of the same aircraft (F14 Tomcat), demonstrating that the descriptors generalise across representation styles:
 
 <img width="500" height="365" alt="fourier_descriptor" src="https://github.com/user-attachments/assets/8d17458a-b865-447d-938a-07f14ec8877c" />
-![Fourier Descriptor Example — F14 Tomcat](fourier_descriptor.png)
 
 ### Edge Texture: Fixed Gabor Filters or Learnable CNN
 
@@ -167,9 +166,11 @@ Output: Normalised puzzle pieces
 The scale factor in Stage 1 guarantees full coverage of the target canvas before cropping, avoiding any padding or distortion in the source images. In Stage 2, the tab direction grid is sampled once per image from a filename-derived seed, making every cut pattern unique but fully reproducible across runs. Each interlocking boundary is assembled from five chained cubic Bézier curves that together trace the characteristic tab-and-blank profile of a real jigsaw edge: a straight approach, a narrowing neck, a rounded tab apex, a mirrored neck exit, and a straight departure. The canvas padding of 0.35 × max(p_w, p_h) ensures that tabs protruding beyond the nominal tile boundary are never clipped. Finally, all pieces are normalised to a uniform canvas size (W_max, H_max) by centring each piece within a transparent background, enabling the encoder to process every piece as a fixed-size tensor while clearly distinguishing piece geometry from empty space.
 
 **Source image before puzzle cutting.** The image is first scaled and centre-cropped to the target resolution so that all pieces derive from a uniform canvas, preventing any piece from containing padding artefacts.
+
 <img width="500" height="365" alt="Image_before" src="https://github.com/user-attachments/assets/38712916-91f6-497b-86fd-74b7e96012ad" />
 
 **Curved jigsaw pieces produced by the Bézier cutting algorithm.** Each boundary is constructed from five chained cubic Bézier segments forming a tab-and-blank profile. Pieces are padded to a uniform canvas size and surrounded by a transparent background so that the encoder can distinguish piece geometry from empty space.
+
 <img width="500" height="365" alt="Image_after" src="https://github.com/user-attachments/assets/c3610a1c-c735-4369-9b56-beb7d532384a" />
 
 ### Results
