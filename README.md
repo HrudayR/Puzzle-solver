@@ -6,10 +6,10 @@
 📂 **GitHub Repository:** [Puzzle-solver](https://github.com/HrudayR/Puzzle-solver/tree/master)
 
 ---
-<img width="685" height="745" alt="Screenshot 2026-04-07 033459" src="https://github.com/user-attachments/assets/b8195555-e9bd-4351-a547-1eab4474ebc7" />
-<img width="898" height="763" alt="Image_after" src="https://github.com/user-attachments/assets/c3610a1c-c735-4369-9b56-beb7d532384a" />
-<img width="1317" height="591" alt="fourier_descriptor" src="https://github.com/user-attachments/assets/8d17458a-b865-447d-938a-07f14ec8877c" />
-<img width="500" height="365" alt="Image_before" src="https://github.com/user-attachments/assets/38712916-91f6-497b-86fd-74b7e96012ad" />
+
+
+
+
 
 ## Table of Contents
 
@@ -61,7 +61,7 @@ The framework has one major limitation, however. By assuming square pieces, it d
 Our method follows the same two-stage pipeline as [4]. An encoder first produces a compact representation of each piece, and a Transformer solver then reasons about all pieces simultaneously to predict the correct arrangement. The only difference lies in the first stage: instead of raw pixel strips from square edges, our encoder captures boundary shape and edge texture.
 
 ### Pipeline Architecture
-
+<img width="685" height="745" alt="Screenshot 2026-04-07 033459" src="https://github.com/user-attachments/assets/b8195555-e9bd-4351-a547-1eab4474ebc7" />
 ![Full pipeline architecture](1775525704134_image.png)
 
 *Figure 1: Full pipeline architecture. B = Batch size, N = Number of pieces, D = Embedding dimension.*
@@ -73,7 +73,7 @@ We model the outline of a jigsaw piece as a closed 2D curve. Fourier descriptors
 This ensures that matching boundaries produce similar descriptors regardless of orientation, which is essential since pieces may appear at arbitrary angles. Unlike [4], which assumes square pieces and ignores boundary shape, we treat it as a primary signal.
 
 The figure below illustrates the full Fourier descriptor pipeline — from binary shape, to boundary signal, to reconstruction using 20 descriptors, and finally to the normalised descriptor magnitudes that remain stable under rotation:
-
+<img width="1317" height="591" alt="fourier_descriptor" src="https://github.com/user-attachments/assets/8d17458a-b865-447d-938a-07f14ec8877c" />
 ![Fourier Descriptor Pipeline](image_fourier.png)
 
 The following figure shows an example of matching Fourier descriptors computed from a blueprint and a photograph of the same aircraft (F14 Tomcat), demonstrating that the descriptors generalise across representation styles:
@@ -167,11 +167,11 @@ Output: Normalised puzzle pieces
 The scale factor in Stage 1 guarantees full coverage of the target canvas before cropping, avoiding any padding or distortion in the source images. In Stage 2, the tab direction grid is sampled once per image from a filename-derived seed, making every cut pattern unique but fully reproducible across runs. Each interlocking boundary is assembled from five chained cubic Bézier curves that together trace the characteristic tab-and-blank profile of a real jigsaw edge: a straight approach, a narrowing neck, a rounded tab apex, a mirrored neck exit, and a straight departure. The canvas padding of 0.35 × max(p_w, p_h) ensures that tabs protruding beyond the nominal tile boundary are never clipped. Finally, all pieces are normalised to a uniform canvas size (W_max, H_max) by centring each piece within a transparent background, enabling the encoder to process every piece as a fixed-size tensor while clearly distinguishing piece geometry from empty space.
 
 **Source image before puzzle cutting.** The image is first scaled and centre-cropped to the target resolution so that all pieces derive from a uniform canvas, preventing any piece from containing padding artefacts.
-
+<img width="500" height="365" alt="Image_before" src="https://github.com/user-attachments/assets/38712916-91f6-497b-86fd-74b7e96012ad" />
 ![Source image before puzzle cutting](Image_before.png)
 
 **Curved jigsaw pieces produced by the Bézier cutting algorithm.** Each boundary is constructed from five chained cubic Bézier segments forming a tab-and-blank profile. Pieces are padded to a uniform canvas size and surrounded by a transparent background so that the encoder can distinguish piece geometry from empty space.
-
+<img width="898" height="763" alt="Image_after" src="https://github.com/user-attachments/assets/c3610a1c-c735-4369-9b56-beb7d532384a" />
 ![Curved jigsaw pieces after cutting](Image_after.png)
 
 ### Results
