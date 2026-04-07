@@ -45,7 +45,7 @@ These experiments are designed to answer three concrete questions:
 
 Automated puzzle solving evolved from a 1964 geometric-only approach [5] to the first use of visual content for reconstruction in 1994 [6]. Traditional greedy algorithms were often brittle because sequential piece placement allowed single mismatches to propagate throughout the entire reconstruction [7]. This brittleness motivated a shift toward global reasoning, where techniques like linear programming consider all pieces simultaneously rather than one at a time. Modern deep learning models, such as Twin Embedding Networks [8] and generative adversarial networks [9], further increased robustness against degraded data like eroded edges. These advancements established the foundation for Vision Transformers, which currently provide a global, permutation-based solution to piece placement.
 
-Heck et al. [4] represent the current state of the art in this paradigm, and their approach forms the direct foundation of our work. Their framework treats reconstruction as a permutation problem: given N scrambled pieces, find the correct assignment of each piece to its position in the grid. A CNN-based edge encoder processes each piece by extracting four thin pixel strips — one per edge — through a shared network, pulling compatible edges closer together in embedding space and pushing incompatible ones apart. The four resulting vectors are concatenated into a single piece representation and passed to a Vision Transformer, which uses multi-head self-attention to capture global context across all pieces simultaneously. The raw Transformer outputs are then passed through a Sinkhorn–Knopp normalisation layer to produce a differentiable soft permutation matrix, enabling end-to-end training.
+Heck et al. [4] represent the current state of the art in this paradigm, and their approach forms the direct foundation of our work. Their framework treats reconstruction as a permutation problem: given N scrambled pieces, find the correct assignment of each piece to its position in the grid. A CNN-based edge encoder processes each piece by extracting four thin pixel strips, one per edge, through a shared network, pulling compatible edges closer together in embedding space and pushing incompatible ones apart. The four resulting vectors are concatenated into a single piece representation and passed to a Vision Transformer, which uses multi-head self-attention to capture global context across all pieces simultaneously. The raw Transformer outputs are then passed through a Sinkhorn–Knopp normalisation layer to produce a differentiable soft permutation matrix, enabling end-to-end training.
 
 The results are compelling: the architecture achieves a 50% accuracy gain against previous methods on puzzles with eroded fragment edges [4].
 
@@ -70,14 +70,14 @@ We model the outline of a jigsaw piece as a closed 2D curve. Fourier descriptors
 
 This ensures that matching boundaries produce similar descriptors regardless of orientation, which is essential since pieces may appear at arbitrary angles. Unlike [4], which assumes square pieces and ignores boundary shape, we treat it as a primary signal.
 
-The figure below illustrates the full Fourier descriptor pipeline — from binary shape, to boundary signal, to reconstruction using 20 descriptors, and finally to the normalised descriptor magnitudes that remain stable under rotation:
+The figure below illustrates the full Fourier descriptor pipeline, from binary shape, to boundary signal, to reconstruction using 20 descriptors, and finally to the normalised descriptor magnitudes that remain stable under rotation:
 <p align="center">
 <img width="500" height="365" alt="image_fourier" src="https://github.com/user-attachments/assets/7555082c-43b5-4592-a408-199280b071a6" /><br>
   <em>Figure 2: The piece contour is converted into a complex boundary signal and decomposed into Fourier coefficients, capturing both global shape and fine detail. Using magnitude-only descriptors yields a compact, rotation-invariant representation for matching edges.</em>
 </p>
 
 
-The following figure shows an example of matching Fourier descriptors computed from a blueprint and a photograph of the same aircraft (F14 Tomcat), demonstrating that the descriptors generalise across representation styles:
+The following figure shows an example of matching Fourier descriptors computed from a blueprint and a photograph of the same aircraft, demonstrating that the descriptors generalise across representation styles:
 
 
 <p align="center">
