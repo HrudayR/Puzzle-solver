@@ -1,4 +1,3 @@
-[README (1).md](https://github.com/user-attachments/files/26523539/README.1.md)
 # Computer Vision Blog Post — Group 17
 
 **Team Members:** Hruday Ramachandra, Mateusz Rębacz, Vishnu Karthik Ramesh Selvam
@@ -6,8 +5,6 @@
 📂 **GitHub Repository:** [Puzzle-solver](https://github.com/HrudayR/Puzzle-solver/tree/master)
 
 ---
-
-
 
 
 
