@@ -102,7 +102,7 @@ Both approaches produce a single embedding per piece by concatenating Fourier de
 
 Given an anchor **a**, a positive **p** (compatible edge), and a negative **n** (incompatible edge), the loss is:
 
-$$\mathcal{L}_{\text{triplet}} = \max\!\left(0,\; \|\mathbf{a} - \mathbf{p}\|_2^2 - \|\mathbf{a} - \mathbf{n}\|_2^2 + \alpha\right)$$
+$$\mathcal{L}_{\text{triplet}} = \max\left(0,\; \|\mathbf{a} - \mathbf{p}\|_2^2 - \|\mathbf{a} - \mathbf{n}\|_2^2 + \alpha\right)$$
 
 This enforces that compatible edges are closer in embedding space than incompatible ones by a margin α. Over many triplets, the encoder learns to cluster matching edges and separate mismatched ones.
 
@@ -124,7 +124,7 @@ yielding **S** ∈ ℝ^(N×N), where S_ij measures how likely piece i belongs to
 
 3. Sinkhorn–Knopp normalisation [13] converts **S** into a soft permutation matrix:
 
-$$\mathbf{P}^{(t+1)} = \text{normalise\_cols}\!\left(\text{normalise\_rows}\!\left(\mathbf{P}^{(t)}\right)\right), \quad \mathbf{P}^{(0)} = \exp(\mathbf{S})$$
+$$\mathbf{P}^{(t+1)} = \text{normalise cols}\!\left(\text{normalise rows}\!\left(\mathbf{P}^{(t)}\right)\right), \quad \mathbf{P}^{(0)} = \exp(\mathbf{S})$$
 
 After several iterations, **P** approximates a valid assignment. Because this step is differentiable, gradients propagate through the entire pipeline, enabling end-to-end training.
 
