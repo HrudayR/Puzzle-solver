@@ -240,3 +240,6 @@ if __name__ == "__main__":
             n_pieces=args.num_pieces,
             style=args.style,
         )
+
+
+# python generate_dataset.py generate /scratch/hramachandra/Puzzle-solver/Dataset/ILSVRC_train/ /scratch/hramachandra/Puzzle-solver/Dataset/train_set_curved --num-pieces 20 --style curved

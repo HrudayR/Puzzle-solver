@@ -10,14 +10,10 @@ Each piece → K_CLUSTERS centroids sorted by brightness → flattened
 Output dim per piece = EMBEDDING_SIZE  (any value, no restrictions)
 """
 
-INPUT          = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/train_set_curved"
-EMBEDDING_SIZE = 128           # output dim per piece — any value you want
-K_CLUSTERS     = 8           # internal k-means clusters (implementation detail)
-OUTPUT_DIR     = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset"
-GLOB_PATTERN   = "*/pieces/piece_*.png"
-CREATE_DATASET = True
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import *
 
-import sys
 import cv2
 import numpy as np
 from pathlib import Path
@@ -151,7 +147,7 @@ def create_dataset(root: Path, embedding_size: int, k: int,
 
 
 if __name__ == "__main__":
-    root = Path(INPUT)
+    root = DATASET_ROOT
     if not root.exists():
         print(f"[ERROR] Path does not exist: {root}", file=sys.stderr)
         sys.exit(1)
@@ -162,5 +158,5 @@ if __name__ == "__main__":
             embedding_size = EMBEDDING_SIZE,
             k              = K_CLUSTERS,
             glob_pattern   = GLOB_PATTERN,
-            output_dir     = Path(OUTPUT_DIR),
+            output_dir     = OUTPUT_DIR,
         )

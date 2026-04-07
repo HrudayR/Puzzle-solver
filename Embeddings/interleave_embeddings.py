@@ -1,10 +1,9 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import *
+
 import numpy as np
 import sys
-
-OUTPUT_DIRECTORY   = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/"
-EMBEDDING_SIZE     = 128   # conv and fourier
-NUMBER_OF_PIECES   = 20
-PIECE_DIM          = 3 * EMBEDDING_SIZE
 
 
 def pair_embeddings(conv_embeddings, fourier_embeddings, color_embeddings):
@@ -60,9 +59,9 @@ def shuffle_arrays(packed_array, target_array):
 
 
 if __name__ == "__main__":
-    conv_embeddings    = np.load(f"{OUTPUT_DIRECTORY}/convolution_curved_{EMBEDDING_SIZE}.npy")
-    fourier_embeddings = np.load(f"{OUTPUT_DIRECTORY}/fourier_curved_{EMBEDDING_SIZE}.npy")
-    color_embeddings   = np.load(f"{OUTPUT_DIRECTORY}/color_curved_{EMBEDDING_SIZE}.npy")
+    conv_embeddings    = np.load(OUTPUT_DIR / f"convolution_curved_{EMBEDDING_SIZE}.npy")
+    fourier_embeddings = np.load(OUTPUT_DIR / f"fourier_curved_{EMBEDDING_SIZE}.npy")
+    color_embeddings   = np.load(OUTPUT_DIR / f"color_curved_{EMBEDDING_SIZE}.npy")
 
     print(f"Conv Embeddings Shape:    {conv_embeddings.shape}")
     print(f"Fourier Embeddings Shape: {fourier_embeddings.shape}")
@@ -74,6 +73,6 @@ if __name__ == "__main__":
     print(f"\nPaired Shape: {packed.shape}  (N, N_pieces, {EMBEDDING_SIZE})")
     print(f"Target Shape: {target.shape}  (N, N_pieces)")
 
-    np.save(f"{OUTPUT_DIRECTORY}/paired_embeddings_curved_{EMBEDDING_SIZE}.npy", packed)
-    np.save(f"{OUTPUT_DIRECTORY}/targets_curved_{EMBEDDING_SIZE}.npy", target)
-    np.save(f"{OUTPUT_DIRECTORY}/targets_one_hot_curved_{EMBEDDING_SIZE}.npy", target_one_hot)
+    np.save(OUTPUT_DIR / f"paired_embeddings_curved_{EMBEDDING_SIZE}.npy", packed)
+    np.save(OUTPUT_DIR / f"targets_curved_{EMBEDDING_SIZE}.npy", target)
+    np.save(OUTPUT_DIR / f"targets_one_hot_curved_{EMBEDDING_SIZE}.npy", target_one_hot)

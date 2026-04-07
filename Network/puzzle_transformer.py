@@ -1,28 +1,11 @@
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from config import *
+
 import torch
 import torch.nn as nn
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-
-# ── Embedding mode ────────────────────────────────────────────
-# "stored" : load pre-computed .npy files (fast, fixed shuffles)
-# "live"   : generate embeddings on the fly via PuzzleDataset
-EMBEDDING_MODE = "live"
-
-# ── Shared config ─────────────────────────────────────────────
-EMBEDDING_SIZE   = 128
-NUMBER_OF_PIECES = 20
-BATCH_SIZE       = 8
-PIECE_DIM        = 3 * EMBEDDING_SIZE
-
-# ── Stored mode paths ─────────────────────────────────────────
-STORED_X_PATH = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/paired_embeddings_curved_128.npy"
-STORED_Y_PATH = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/targets_one_hot_curved_128.npy"
-
-# ── Live mode config ──────────────────────────────────────────
-DATASET_ROOT     = "/home/hruday/studies/computer_vision/puzzle_solver/Puzzle-solver/Dataset/train_set_curved"
-GLOB_PATTERN     = "*/pieces/piece_*.png"
-K_CLUSTERS       = 8
-ENCODER_CHECKPOINT = None  # set to a .pt path once the encoder has been trained
 
 def sinkhorn(log_alpha, n_iters=20):
     """Normalize a matrix to be doubly stochastic via Sinkhorn iterations (in log space)."""
@@ -69,7 +52,7 @@ def augment_batch(x, y, k=4):
 
 class PuzzleTransformer(nn.Module):
     def __init__(self, piece_dim=384, num_pieces=20, 
-                 d_model=256, nhead=8, num_layers=4):
+                 d_model=1024, nhead=16, num_layers=6):
         super().__init__()
         self.num_pieces = num_pieces
 
@@ -83,8 +66,11 @@ class PuzzleTransformer(nn.Module):
         # reasons about all pieces together
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model, nhead=nhead,
-            dim_feedforward=256, dropout=0.1,
-            batch_first=True
+            dim_feedforward=4 * d_model,  # 4096 — standard 4x ratio
+            dropout=0.1,
+            batch_first=True,
+            activation='gelu',            # paper uses GELU
+            norm_first=True,              # pre-norm as in ViT
         )
         self.transformer = nn.TransformerEncoder(
             encoder_layer, num_layers=num_layers
@@ -105,7 +91,9 @@ class PuzzleTransformer(nn.Module):
 if __name__ == "__main__":
     from torch.utils.data import DataLoader, TensorDataset, random_split
 
+    print("staring transformer training")
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"training on {device}")
 
     # ── Build DataLoaders ─────────────────────────────────────
     if EMBEDDING_MODE == "stored":
@@ -142,9 +130,11 @@ if __name__ == "__main__":
     # ── Model & optimiser ─────────────────────────────────────
     model = PuzzleTransformer(piece_dim=PIECE_DIM, num_pieces=NUMBER_OF_PIECES).to(device)
     print(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     # ── Training loop ─────────────────────────────────────────
+    best_test_loss = float("inf")
+
     for epoch in range(1000):
         model.train()
         epoch_loss, num_batches = 0.0, 0
@@ -179,7 +169,7 @@ if __name__ == "__main__":
                 test_logits = model(x_batch)
                 test_loss_total += sinkhorn_loss(test_logits, y_batch).item()
 
-                soft_preds = sinkhorn(test_logits)
+                soft_preds = sinkhorn(test_logits)      # reuse logits, no second forward pass
                 true_indices = y_batch.argmax(dim=-1).cpu()
                 for i in range(soft_preds.shape[0]):
                     col_ind = linear_sum_assignment(
@@ -191,6 +181,11 @@ if __name__ == "__main__":
             avg_test_loss  = test_loss_total / len(test_loader)
             avg_train_loss = epoch_loss / num_batches
             accuracy = total_correct / total_pieces
+
+        if avg_test_loss < best_test_loss:
+            best_test_loss = avg_test_loss
+            torch.save(model.state_dict(), TRANSFORMER_CHECKPOINT)
+            print(f"  [checkpoint] saved best model (test loss {best_test_loss:.4f}) -> {TRANSFORMER_CHECKPOINT}")
 
         print(f"\n{'='*60}")
         print(f"  Epoch {epoch+1}/1000  |  Train Loss: {avg_train_loss:.4f}  |  Test Loss: {avg_test_loss:.4f}")
