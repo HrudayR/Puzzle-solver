@@ -63,7 +63,6 @@ Our method follows the same two-stage pipeline as [4]. An encoder first produces
   <em>Figure 1: Full pipeline architecture. Each puzzle piece is passed through two parallel encoders, i) a learnable CNN for edge texture and ii) a Fourier descriptor for boundary shape, whose outputs are concatenated and projected into a shared embedding space. A Vision Transformer then reasons globally over all pieces via multi-head self-attention, producing a score matrix that is converted into a soft permutation matrix through Sinkhorn–Knopp normalisation.</em>
 </p>
 
-*Figure 1: Full pipeline architecture. B = Batch size, N = Number of pieces, D = Embedding dimension.*
 
 ### Boundary Shape: Fourier Descriptors
 
@@ -72,7 +71,7 @@ We model the outline of a jigsaw piece as a closed 2D curve. Fourier descriptors
 This ensures that matching boundaries produce similar descriptors regardless of orientation, which is essential since pieces may appear at arbitrary angles. Unlike [4], which assumes square pieces and ignores boundary shape, we treat it as a primary signal.
 
 The figure below illustrates the full Fourier descriptor pipeline — from binary shape, to boundary signal, to reconstruction using 20 descriptors, and finally to the normalised descriptor magnitudes that remain stable under rotation:
-p align="center">
+<p align="center">
 <img width="500" height="365" alt="image_fourier" src="https://github.com/user-attachments/assets/7555082c-43b5-4592-a408-199280b071a6" /><br>
   <em>Figure 2: The piece contour is converted into a complex boundary signal and decomposed into Fourier coefficients, capturing both global shape and fine detail. Using magnitude-only descriptors yields a compact, rotation-invariant representation for matching edges.</em>
 </p>
@@ -195,17 +194,6 @@ The scale factor in Stage 1 guarantees full coverage of the target canvas before
     distinguish piece geometry from empty space.</em>
 </p>
 
-### Results
-
-| Exp. | Encoder | Texture Features | Solver | Matching (%) |
-|------|---------|-----------------|--------|:------------:|
-| 1 | Square CNN (baseline) | Raw pixel strips | Transformer | 53 |
-| 2 | Fourier + Gabor | Fixed Gabor bank | Shallow NN | 32 |
-| 3 | Fourier + Gabor | Fixed Gabor bank | Transformer | 58 |
-| 4 | Fourier + CNN | Learnable CNN | Shallow NN | 44 |
-| 5 | Fourier + CNN | Learnable CNN | Transformer | **70** |
-
-*Matching accuracy across all five experimental configurations. Each row isolates one variable relative to the others. The full method (Experiment 5) achieves the highest accuracy.*
 
 #### Experiment 1: The Baseline
 
@@ -231,6 +219,19 @@ Our full proposed method, combining the learnable CNN encoder with the Transform
 - A gain of **0.12** over the best fixed-feature configuration (Experiment 3)
 
 The result answers all three of our research questions affirmatively: a shape-aware, texture-rich encoder outperforms the square-piece baseline; a learnable CNN outperforms fixed Gabor kernels; and the Transformer solver is necessary to unlock the full benefit of the richer encoder.
+
+### Results
+
+| Exp. | Encoder | Texture Features | Solver | Matching (%) |
+|------|---------|-----------------|--------|:------------:|
+| 1 | Square CNN (baseline) | Raw pixel strips | Transformer | 53 |
+| 2 | Fourier + Gabor | Fixed Gabor bank | Shallow NN | 32 |
+| 3 | Fourier + Gabor | Fixed Gabor bank | Transformer | 58 |
+| 4 | Fourier + CNN | Learnable CNN | Shallow NN | 44 |
+| 5 | Fourier + CNN | Learnable CNN | Transformer | **70** |
+
+*Matching accuracy across all five experimental configurations. Each row isolates one variable relative to the others. The full method (Experiment 5) achieves the highest accuracy.*
+
 
 ---
 
