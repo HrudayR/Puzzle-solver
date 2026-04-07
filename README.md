@@ -96,13 +96,16 @@ The **second** uses a learnable CNN operating on the piece image. This does not 
 
 Unlike [4], where a single CNN must learn both shape and texture, our approach separates these roles. Shape is handled explicitly by Fourier descriptors, allowing the CNN to focus solely on texture, leading to more discriminative embeddings.
 
+
 ### The Encoder
 
 Both approaches produce a single embedding per piece by concatenating Fourier descriptors with texture features (Gabor or CNN). The encoder is trained using **triplet loss**.
 
 Given an anchor **a**, a positive **p** (compatible edge), and a negative **n** (incompatible edge), the loss is:
 
-$$\mathcal{L}_{\text{triplet}} = \max\left(0,\; \|\mathbf{a} - \mathbf{p}\|_2^2 - \|\mathbf{a} - \mathbf{n}\|_2^2 + \alpha\right)$$
+$$\mathcal{L}_{\text{triplet}} = \max\left(0, \|\mathbf{a} - \mathbf{p}\|_2^2 - \|\mathbf{a} - \mathbf{n}\|_2^2 + \alpha\right)$$
+
+where $\mathbf{a}$ is the anchor edge embedding, $\mathbf{p}$ is a compatible (positive) edge embedding, $\mathbf{n}$ is an incompatible (negative) edge embedding, and $\alpha$ is the margin enforcing a minimum separation between compatible and incompatible pairs.
 
 This enforces that compatible edges are closer in embedding space than incompatible ones by a margin α. Over many triplets, the encoder learns to cluster matching edges and separate mismatched ones.
 
@@ -120,13 +123,15 @@ The solver operates in three steps:
 
 $$\text{Attention}(\mathbf{Q},\mathbf{K},\mathbf{V}) = \text{softmax}\!\left(\frac{\mathbf{Q}\mathbf{K}^\top}{\sqrt{d_k}}\right)\mathbf{V}$$
 
-yielding **S** ∈ ℝ^(N×N), where S_ij measures how likely piece i belongs to position j.
+where $\mathbf{Q}$, $\mathbf{K}$, and $\mathbf{V}$ are the query, key, and value matrices derived from the piece embeddings, and $d_k$ is the dimension of the key vectors used to scale the dot products. This yields a score matrix $\mathbf{S} \in \mathbb{R}^{N \times N}$, where $S_{ij}$ measures how likely piece $i$ belongs to position $j$.
 
-3. Sinkhorn–Knopp normalisation [13] converts **S** into a soft permutation matrix:
+3. Sinkhorn–Knopp normalisation [13] converts $\mathbf{S}$ into a soft permutation matrix:
 
 $$\mathbf{P}^{(t+1)} = \text{normalise cols}\!\left(\text{normalise rows}\!\left(\mathbf{P}^{(t)}\right)\right), \quad \mathbf{P}^{(0)} = \exp(\mathbf{S})$$
 
-After several iterations, **P** approximates a valid assignment. Because this step is differentiable, gradients propagate through the entire pipeline, enabling end-to-end training.
+where $\mathbf{P}^{(t)}$ is the assignment matrix at iteration $t$, initialised as the element-wise exponential of the score matrix $\mathbf{S}$. Alternating row and column normalisation is applied until $\mathbf{P}$ converges to a doubly stochastic matrix approximating a valid permutation.
+
+After several iterations, $\mathbf{P}$ approximates a valid assignment. Because this step is differentiable, gradients propagate through the entire pipeline, enabling end-to-end training.
 
 Keeping the solver identical to [4] ensures that any performance differences are attributable solely to improvements in the encoder.
 
