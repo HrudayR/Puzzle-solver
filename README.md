@@ -168,7 +168,15 @@ The scale factor in Stage 1 guarantees full coverage of the target canvas before
 
 **Curved jigsaw pieces produced by the Bézier cutting algorithm.** Each boundary is constructed from five chained cubic Bézier segments forming a tab-and-blank profile. Pieces are padded to a uniform canvas size and surrounded by a transparent background so that the encoder can distinguish piece geometry from empty space.
 
+<p align="center">
 <img width="500" height="365" alt="Image_after" src="https://github.com/user-attachments/assets/c3610a1c-c735-4369-9b56-beb7d532384a" />
+<br>
+  <em>Curved jigsaw pieces produced by the Bezier cutting algorithm.
+    Each boundary is constructed from five chained cubic Bezier segments
+    forming a tab-and-blank profile. Pieces are padded to a uniform canvas size
+    and surrounded by a transparent background so that the encoder can
+    distinguish piece geometry from empty space.</em>
+</p>
 
 ### Results
 
@@ -192,11 +200,11 @@ Replacing the square CNN with hand-crafted Fourier descriptors and fixed Gabor k
 
 #### Experiment 3: Fixed Features + Fourier Descriptors, Transformer Solver
 
-Swapping the shallow solver for the full Transformer while keeping the fixed encoder unchanged produces a matching accuracy of **0.58** — a gain of 0.26 over Experiment 2 and a marginal improvement of 0.05 over the baseline. Two conclusions follow. First, the Transformer is doing substantial work: the same fixed features that scored 0.32 with a shallow solver reach 0.58 when the solver can reason globally. Second, hand-crafted Fourier and Gabor features are already competitive with the baseline square CNN when paired with a strong solver, suggesting that boundary shape and fixed texture responses carry genuine compatibility signal.
+Swapping the shallow solver for the full Transformer while keeping the fixed encoder unchanged produces a matching accuracy of **0.58**, which is a gain of 0.26 over Experiment 2 and a marginal improvement of 0.05 over the baseline. Two conclusions follow. First, the Transformer is doing substantial work: the same fixed features that scored 0.32 with a shallow solver reach 0.58 when the solver can reason globally. Second, hand-crafted Fourier and Gabor features are already competitive with the baseline square CNN when paired with a strong solver, suggesting that boundary shape and fixed texture responses carry genuine compatibility signal.
 
 #### Experiment 4: Learnable CNN + Fourier Descriptors, Shallow Solver
 
-Introducing a learnable CNN alongside the Fourier descriptors, but retaining the shallow solver, achieves a matching accuracy of **0.44** — a clear improvement of 0.12 over Experiment 2. The gap is entirely attributable to the CNN learning a task-specific texture representation on top of the fixed Fourier signal. Because boundary shape is already captured by the Fourier descriptors, the CNN can focus exclusively on residual texture, and this focused learning is more effective than the fixed Gabor bank. The accuracy remains below the baseline, however, reinforcing that the shallow solver is still the primary bottleneck.
+Introducing a learnable CNN alongside the Fourier descriptors, but retaining the shallow solver, achieves a matching accuracy of **0.44**, which is a clear improvement of 0.12 over Experiment 2. The gap is entirely attributable to the CNN learning a task-specific texture representation on top of the fixed Fourier signal. Because boundary shape is already captured by the Fourier descriptors, the CNN can focus exclusively on residual texture, and this focused learning is more effective than the fixed Gabor bank. The accuracy remains below the baseline, however, reinforcing that the shallow solver is still the primary bottleneck.
 
 #### Experiment 5: Learnable CNN + Fourier Descriptors, Transformer Solver
 
@@ -223,7 +231,7 @@ Experiments 2 and 3 together show that Fourier descriptors and fixed Gabor kerne
 The jump from Experiment 3 (0.58) to Experiment 5 (0.70) isolates the contribution of the learnable CNN. Fourier descriptors capture boundary shape, but they are insensitive to fine-grained visual content running along the edge such as colour transitions, surface texture, and local contrast patterns that differ between puzzle images. The learnable CNN fills this gap by discovering the specific textural cues most predictive of compatibility on this dataset. The 0.12 gain over fixed Gabor features confirms that task-specific learning adds discriminative power that no fixed filter bank can replicate.
 
 **The Transformer solver is necessary, not optional.**
-Comparing Experiments 2 and 3 and Experiments 4 and 5 reveals a consistent gain of roughly 0.26 from the Transformer, regardless of which encoder is used. Puzzle reconstruction is an inherently global problem: the correct position of any single piece is only meaningful relative to all others. A shallow solver that reasons locally cannot resolve this interdependency, whereas the Transformer's self-attention mechanism considers every piece against every other in a single pass. The solver is not an interchangeable component — it is a structural requirement for competitive performance.
+Comparing Experiments 2 and 3 and Experiments 4 and 5 reveals a consistent gain of roughly 0.26 from the Transformer, regardless of which encoder is used. Puzzle reconstruction is an inherently global problem: the correct position of any single piece is only meaningful relative to all others. A shallow solver that reasons locally cannot resolve this interdependency, whereas the Transformer's self-attention mechanism considers every piece against every other in a single pass. The solver is not an interchangeable component. Rather, it is a structural requirement for competitive performance.
 
 **Limitations and future work.**
 Despite the improvement over the baseline, a matching accuracy of 0.70 leaves substantial room for further progress. Several directions are worth exploring:
